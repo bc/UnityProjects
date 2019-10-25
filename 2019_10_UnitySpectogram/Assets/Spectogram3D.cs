@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -9,24 +10,16 @@ public class Spectogram3D : MonoBehaviour
 {
     public string _musicObjectTag = "MusicObject"; // remember to add this in unity inspector
 
-    Vector3[] verts;
-    int[] triangles;
+    private List<Vector3> _vertices;
+    private List<int> _triangles;
+    private Mesh _currentMesh;
+    private float myPlotWidth = 1f;
+    private float myPlotHeight = 0.03f;
 
-
-
-    // Start is called before the first frame update
     void Start()
     {
-        // https://docs.unity3d.com/ScriptReference/MeshFilter-mesh.html
-        //Mesh mesh = GetComponent<MeshFilter>().sharedMesh;
-        //Mesh mesh2 = Instantiate(mesh);
-        //GetComponent<MeshFilter>().sharedMesh = mesh2;
-
-
-
-        // InvokeRepeating("CloneMesh", 0.0f, 2f);
-
         CreateMesh();
+        _currentMesh = GetComponent<MeshFilter>().mesh;
     }
 
     private void CreateMesh()
@@ -37,70 +30,66 @@ public class Spectogram3D : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        ReCalculateMesh();
-
-
-        //GameObject[] cubes;
-        //cubes = GameObject.FindGameObjectsWithTag(_musicObjectTag);
-
-        //foreach(GameObject cube in cubes)
-        //{
-        //    cube.transform.position = new Vector3(cube.transform.position.x, cube.transform.position.y, cube.transform.position.z + 0.01f);
-        //}
-        
+        ApplyNewMesh(_currentMesh, myPlotWidth, myPlotHeight);
     }
 
-    void CloneMesh()
+    private void ApplyNewMesh(Mesh myMesh, float plotWidth = 1f, float plotHeight = 1f)
     {
-        GameObject gameObject = Instantiate(GetComponent<MeshRenderer>().gameObject);
-        gameObject.tag = _musicObjectTag;
-
-        Destroy(gameObject, 3);
+        var signalHistory = AudioManager._bandVolumes;
+        ComputeDataMesh(out _triangles, out _vertices, signalHistory, plotWidth, plotHeight);
+        RefreshMesh(myMesh, _vertices, _triangles);
     }
 
-
-    void ReCalculateMesh()
+    private void RefreshMesh(Mesh myMesh, List<Vector3>  myVertices, List<int> myTriangles)
     {
-        Mesh mesh = GetComponent<MeshFilter>().mesh;
-        mesh.Clear();
+        myMesh.Clear();
+        myMesh.vertices = myVertices.ToArray();
+        myMesh.triangles = myTriangles.ToArray();
+        myMesh.RecalculateNormals();
+    }
 
-        List<Vector3> verts = new List<Vector3>();
-        List<int> triangles = new List<int>();
-
-        float xRange = 100;
-
-        for(int m=0; m<AudioManager._bandVolumes.Length - 1; m++)
+    /// <summary>
+    /// volumes represent the amplitude of the heights.
+    /// </summary>
+    /// <param name="triangles"></param>
+    /// <param name="vertices"></param>
+    /// <param name="signalHistory"></param>
+    /// <param name="plotWidth"></param>
+    /// <param name="plotHeight"></param>
+    private static void ComputeDataMesh(out List<int> triangles, out List<Vector3> vertices, float[][] signalHistory, float plotWidth, float plotHeight)
+    {
+        vertices = new List<Vector3>();
+        triangles = new List<int>();
+        for (int m = 0; m < signalHistory.Length - 1; m++)
         {
-            float[] currentVolumes = AudioManager._bandVolumes[m];
-            float[] previousVolumes = AudioManager._bandVolumes[m + 1];
+            float[] currentVolumes = signalHistory[m];
+            float[] previousVolumes = signalHistory[m + 1];
 
-            float zBandValue = m * 4;
-            float zBandNextValue = (m + 1) * 4;
-
-            for (int i = 0; i < currentVolumes.Length - 1; i++)
+            float zBandValue = m * 4 * plotHeight;
+            float zBandNextValue = ((m + 1) * 4) * plotHeight;
+            var numberOfXBins = currentVolumes.Length;
+            for (int i = 0; i < numberOfXBins - 1; i++)
             {
-                // calculating x position 
-                float x = ((float)i / (currentVolumes.Length - 2)) * xRange;
-                float xNext = ((float)(i + 1) / (currentVolumes.Length - 2)) * xRange;
+                // calculating x position
+                float x = ((float) i / (numberOfXBins - 1)) * plotWidth;
+                float xNext = ((float) (i + 1) / (numberOfXBins - 1)) * plotWidth;
                 float volume = currentVolumes[i];
-                float voulumeNext = currentVolumes[i + 1];
+                float volumeNext = currentVolumes[i + 1];
 
                 // two volumes that was previous
                 float volumePrevious = previousVolumes[i];
                 float volumeNextPrevious = previousVolumes[i + 1];
 
-                if(m==0)
-                    GenerateFrontFace(x, xNext, volume, voulumeNext, verts, triangles, zBandValue);
 
                 // connection with previous band
 
-                // adding verst connecting this band with the next one
-                verts.Add(new Vector3(x, volume, zBandValue));
-                verts.Add(new Vector3(xNext, voulumeNext, zBandValue));
-                verts.Add(new Vector3(x, volumePrevious, zBandNextValue));
-                verts.Add(new Vector3(xNext, volumeNextPrevious, zBandNextValue));
+                // adding vertices connecting this band with the next one
+                vertices.Add(new Vector3(x, volume, zBandValue));
+                vertices.Add(new Vector3(xNext, volumeNext, zBandValue));
+                vertices.Add(new Vector3(x, volumePrevious, zBandNextValue));
+                vertices.Add(new Vector3(xNext, volumeNextPrevious, zBandNextValue));
 
-                int start_point = verts.Count - 4;
+                int start_point = vertices.Count - 4;
                 // adding 2 triangles using this vertex
                 triangles.Add(start_point + 0);
                 triangles.Add(start_point + 2);
@@ -109,80 +98,7 @@ public class Spectogram3D : MonoBehaviour
                 triangles.Add(start_point + 2);
                 triangles.Add(start_point + 3);
                 triangles.Add(start_point + 1);
-
-                // left side
-                if(i == 0)
-                {
-                    verts.Add(new Vector3(x, 0, zBandValue));
-                    verts.Add(new Vector3(x, 0, zBandNextValue));
-                    verts.Add(new Vector3(x, volume, zBandValue));
-                    verts.Add(new Vector3(x, volumePrevious, zBandNextValue));
-
-                    start_point = verts.Count - 4;
-                    // adding 2 triangles using this vertex
-                    triangles.Add(start_point + 0);
-                    triangles.Add(start_point + 1);
-                    triangles.Add(start_point + 2);
-
-                    triangles.Add(start_point + 1);
-                    triangles.Add(start_point + 3);
-                    triangles.Add(start_point + 2);
-                }
-
-                // right side
-                if(i == currentVolumes.Length - 2)
-                {
-                    verts.Add(new Vector3(xNext, 0, zBandValue));
-                    verts.Add(new Vector3(xNext, 0, zBandNextValue));
-                    verts.Add(new Vector3(xNext, volume, zBandValue));
-                    verts.Add(new Vector3(xNext, volumePrevious, zBandNextValue));
-
-                    start_point = verts.Count - 4;
-                    // adding 2 triangles using this vertex
-                    triangles.Add(start_point + 0);
-                    triangles.Add(start_point + 2);
-                    triangles.Add(start_point + 1);
-
-                    triangles.Add(start_point + 1);
-                    triangles.Add(start_point + 2);
-                    triangles.Add(start_point + 3);
-                }
-
             }
-
         }
-        
-
-
-        //mesh.vertices = new Vector3[] { new Vector3(0, 0, 0), new Vector3(0, 0, 1), new Vector3(1, 0, 0) };
-        //mesh.triangles = new int[] { 0, 1, 2 };
-
-        mesh.vertices = verts.ToArray();
-        mesh.triangles = triangles.ToArray();
-
-        mesh.RecalculateNormals();
-    }
-
-    private void GenerateFrontFace(float x, float x_next, float volume, float volume_next, List<Vector3> verts, List<int> triangles, float zBandValue)
-    {
-        // this algoritm can be better, I don't need adding vertex of "next band"
-
-        // adding verst connecting this band with the next one
-        verts.Add(new Vector3(x, 0, zBandValue));
-        verts.Add(new Vector3(x, volume, zBandValue));
-        verts.Add(new Vector3(x_next, 0, zBandValue));
-        verts.Add(new Vector3(x_next, volume_next, zBandValue));
-
-        int start_point = verts.Count - 4;
-        // adding 2 triangles using this vertex
-        triangles.Add(start_point + 0);
-        triangles.Add(start_point + 1);
-        triangles.Add(start_point + 2);
-
-        triangles.Add(start_point + 1);
-        triangles.Add(start_point + 3);
-        triangles.Add(start_point + 2);
-
-
     }
 }

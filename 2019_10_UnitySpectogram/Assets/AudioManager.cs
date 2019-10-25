@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class AudioManager : MonoBehaviour
 {
-    public float _dbMulti = 50;
+    public float dbMulti = 50;
 
     // first value is a "sample colums" and each of column have sample data
     // it's used for making nice geometric stuff
@@ -13,8 +13,10 @@ public class AudioManager : MonoBehaviour
 
     private AudioSource _audioSource;
 
+    // defines how many signal observations will be used for the FFT window
     public static int SAMPLE_COUNT = 1024;
-    public static int SAMPLE_COLUMS = 100;
+    // defines how many FFT results we will hold onto in the _bandVolumes datastructure. 
+    public static int SAMPLE_COLUMNS = 1000;
 
     private List<float> _bands;
 
@@ -23,17 +25,17 @@ public class AudioManager : MonoBehaviour
         // creating range of bands, they should work flexible
         _bands = new List<float>()
         {
-            20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000
+            20,40,60,80,100,120,140,160,180,200,220
         };
 
 
         _audioSource = GetComponent<AudioSource>();
 
-        _bandVolumes = new float[SAMPLE_COLUMS][];
+        _bandVolumes = new float[SAMPLE_COLUMNS][];
 
-        for(int i =0; i< SAMPLE_COLUMS; i++)
+        for(int i =0; i < SAMPLE_COLUMNS; i++)
         {
-            _bandVolumes[i] = new float[_bands.Count - 1]; // -1 beause bands are "from,to" like from 20 to 50
+            _bandVolumes[i] = new float[_bands.Count - 1]; // -1 because bands are "from,to" like from 20 to 50
         }
 
     }
@@ -41,7 +43,7 @@ public class AudioManager : MonoBehaviour
     void Update()
     {
         // copying last values level "up"
-        for(int i = SAMPLE_COLUMS - 1; i>0; i--)
+        for(int i = SAMPLE_COLUMNS - 1; i>0; i--)
         {
             Array.Copy(_bandVolumes[i - 1], _bandVolumes[i], _bands.Count - 1);
         }
@@ -54,7 +56,7 @@ public class AudioManager : MonoBehaviour
         float[] bandVolumes = new float[_bands.Count - 1];
         for (int i = 1; i < _bands.Count; i++)
         {
-            float db = BandVol(_bands[i - 1], _bands[i], samples) * _dbMulti;
+            float db = BandVol(_bands[i - 1], _bands[i], samples) * dbMulti;
             bandVolumes[i - 1] = db;
             // Debug.Log(i.ToString() + " " + db);
         }
@@ -64,7 +66,7 @@ public class AudioManager : MonoBehaviour
 
     public static float BandVol(float fLow, float fHigh, float[] samples)
     {
-        float hzStep = 20000 / SAMPLE_COUNT;
+        float hzStep = 20000f / SAMPLE_COUNT;
 
         int samples_count = Mathf.RoundToInt((fHigh - fLow) / hzStep);
 
