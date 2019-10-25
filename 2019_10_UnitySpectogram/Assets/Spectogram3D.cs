@@ -33,7 +33,7 @@ public class Spectogram3D : MonoBehaviour
     private void ApplyNewMesh(Mesh myMesh, float plotWidth = 1f, float plotHeight = 1f)
     {
         var signalHistory = AudioManager._bandVolumes;
-        ComputeDataMesh(out _triangles, out _vertices, signalHistory, plotWidth, plotHeight);
+        ComputeDataMesh(out _triangles, out _vertices, signalHistory);
         RefreshMesh(myMesh, _vertices, _triangles);
     }
 
@@ -46,14 +46,14 @@ public class Spectogram3D : MonoBehaviour
     }
 
     /// <summary>
-    /// volumes represent the amplitude of the heights.
+    /// volumes represent the amplitude of the input values.
     /// </summary>
     /// <param name="triangles"></param>
     /// <param name="vertices"></param>
-    /// <param name="signalHistory"></param>
+    /// <param name="signalHistory">a float matrix where the first dimension is time and second dimension is the frequencies</param>
     /// <param name="plotWidth"></param>
     /// <param name="plotHeight"></param>
-    private static void ComputeDataMesh(out List<int> triangles, out List<Vector3> vertices, float[][] signalHistory, float plotWidth, float plotHeight)
+    private static void ComputeDataMesh(out List<int> triangles, out List<Vector3> vertices, float[][] signalHistory)
     {
         vertices = new List<Vector3>();
         triangles = new List<int>();
@@ -70,8 +70,8 @@ public class Spectogram3D : MonoBehaviour
             for (int i = 0; i < numberOfXBins - 1; i++)
             {
                 // calculating x position
-                float x = ((float) i / (numberOfXBins - 1)) * plotWidth;
-                float xNext = ((float) (i + 1) / (numberOfXBins - 1)) * plotWidth;
+                float x = ((float) i / (numberOfXBins - 1));
+                float xNext = ((float) (i + 1) / (numberOfXBins - 1));
                 float volume = currentVolumes[i];
                 float volumeNext = currentVolumes[i + 1];
 
