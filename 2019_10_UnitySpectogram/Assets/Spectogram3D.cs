@@ -16,14 +16,10 @@ public class Spectogram3D : MonoBehaviour
 
     void Start()
     {
-        CreateMesh();
-        _currentMesh = GetComponent<MeshFilter>().mesh;
+        _currentMesh = transform.GetChild(0).GetComponent<MeshFilter>().mesh;
     }
 
-    private void CreateMesh()
-    {
 
-    }
 
     void Update()
     {
