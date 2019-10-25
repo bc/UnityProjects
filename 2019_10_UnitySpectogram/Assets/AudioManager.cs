@@ -7,7 +7,7 @@ public class AudioManager : MonoBehaviour
 {
     public float dbMulti = 50;
 
-    // first value is a "sample colums" and each of column have sample data
+    // first value is a "sample columns" and each of column have sample data
     // it's used for making nice geometric stuff
     public static float[][] _bandVolumes;
 
@@ -15,7 +15,7 @@ public class AudioManager : MonoBehaviour
 
     // defines how many signal observations will be used for the FFT window
     public static int SAMPLE_COUNT = 1024;
-    // defines how many FFT results we will hold onto in the _bandVolumes datastructure. 
+    // defines how many FFT results we will hold onto in the _bandVolumes data structure. 
     public static int SAMPLE_COLUMNS = 1000;
 
     private List<float> _bands;

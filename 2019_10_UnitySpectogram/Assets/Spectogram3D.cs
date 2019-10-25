@@ -8,8 +8,6 @@ using UnityEngine;
 [RequireComponent(typeof(MeshFilter))]
 public class Spectogram3D : MonoBehaviour
 {
-    public string _musicObjectTag = "MusicObject"; // remember to add this in unity inspector
-
     private List<Vector3> _vertices;
     private List<int> _triangles;
     private Mesh _currentMesh;
@@ -27,7 +25,6 @@ public class Spectogram3D : MonoBehaviour
 
     }
 
-    // Update is called once per frame
     void Update()
     {
         ApplyNewMesh(_currentMesh, myPlotWidth, myPlotHeight);
@@ -64,9 +61,11 @@ public class Spectogram3D : MonoBehaviour
         {
             float[] currentVolumes = signalHistory[m];
             float[] previousVolumes = signalHistory[m + 1];
-
-            float zBandValue = m * 4 * plotHeight;
-            float zBandNextValue = ((m + 1) * 4) * plotHeight;
+            
+           // the signal history.length is the number of observations over time.
+            float zBandValue = m/(signalHistory.Length - 1f);
+            float zBandNextValue = (m + 1)/(signalHistory.Length - 1f);
+            
             var numberOfXBins = currentVolumes.Length;
             for (int i = 0; i < numberOfXBins - 1; i++)
             {
